@@ -1,0 +1,89 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+/*
+  Design tokens - single source of truth for the visual system.
+  - Base isn't pure black: true black next to white text causes halation.
+    Stripe/Linear/Vercel all sit around #0A0B0F-#0D0E12.
+  - Surfaces step up in lightness (canvas -> surface -> surface-hover -> border)
+    so elevation reads via lightness steps, since shadows barely show on dark bg.
+  - Single accent (indigo) used sparingly: primary actions, active nav, focus
+    rings, chart lines - so it actually signals something when it appears.
+  - Numeric data uses JetBrains Mono for tabular alignment, Stripe-style.
+*/
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-canvas: #0a0b0f;
+  --color-surface: #13151b;
+  --color-surface-hover: #1a1d25;
+  --color-surface-raised: #1c1f28;
+  --color-border: #24272f;
+  --color-border-strong: #343842;
+
+  --color-primary: #f4f5f7;
+  --color-secondary: #9ca3af;
+  --color-muted: #6b7280;
+
+  --color-accent: #6366f1;
+  --color-accent-hover: #818cf8;
+  --color-accent-soft: #6366f11a;
+
+  --color-success: #34d399;
+  --color-success-soft: #34d3991a;
+  --color-warning: #fbbf24;
+  --color-warning-soft: #fbbf241a;
+  --color-danger: #f87171;
+  --color-danger-soft: #f871711a;
+  --color-info: #38bdf8;
+  --color-info-soft: #38bdf81a;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-primary);
+    font-feature-settings: "cv11", "ss01";
+  }
+  ::selection {
+    background-color: var(--color-accent-soft);
+    color: var(--color-primary);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 999px;
+    border: 2px solid var(--color-canvas);
+  }
+}
+
+@layer utilities {
+  .font-tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .gradient-accent-text {
+    background: linear-gradient(135deg, #818cf8, #38bdf8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
