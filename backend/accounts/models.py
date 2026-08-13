@@ -1,6 +1,59 @@
-﻿import uuid
+import uuid
+
+from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+
+class UserManager(BaseUserManager):
+    """
+    Custom manager so 'every user has an organization' is enforced in code,
+    not just hoped for. create_user() refuses to save without one (the real
+    signup flow, RegisterSerializer, always passes one). create_superuser()
+    auto-provisions a personal Organization if none is given, so `manage.py
+    createsuperuser` can never again produce a user with organization=None.
+    """
+    use_in_migrations = True
+
+    def _create_user(self, email, password, **extra_fields):
+        if not email:
+            raise ValueError("Users must have an email address.")
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_user(self, email, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", False)
+        extra_fields.setdefault("is_superuser", False)
+        if extra_fields.get("organization") is None:
+            raise ValueError(
+                "Cannot create a User without an organization. "
+                "Use RegisterSerializer for real sign-ups, or pass "
+                "organization=... explicitly."
+            )
+        return self._create_user(email, password, **extra_fields)
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("role", "admin")
+
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
+
+        if extra_fields.get("organization") is None:
+            from .models import Organization
+            org, _ = Organization.objects.get_or_create(
+                slug="admin",
+                defaults={"name": "Admin"},
+            )
+            extra_fields["organization"] = org
+
+        return self._create_user(email, password, **extra_fields)
 
 
 class Organization(models.Model):
@@ -27,7 +80,6 @@ class User(AbstractUser):
     later is a painful migration, so we start with it even though v1 only
     needs `role` and `organization`).
     """
-
     class Role(models.TextChoices):
         ADMIN = "admin", "Admin"
         MANAGER = "manager", "Manager"
@@ -35,15 +87,17 @@ class User(AbstractUser):
 
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="members", null=True
+        Organization, on_delete=models.CASCADE, related_name="members", null=False
     )
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.EMPLOYEE)
     avatar = models.ImageField(upload_to="avatars/", null=True, blank=True)
     phone = models.CharField(max_length=32, blank=True)
     job_title = models.CharField(max_length=128, blank=True)
     is_active_member = models.BooleanField(default=True)
-
     email = models.EmailField(unique=True)
+
+    objects = UserManager()
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 
